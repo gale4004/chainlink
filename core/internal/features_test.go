@@ -1110,15 +1110,16 @@ func TestIntegration_RandomnessRequest(t *testing.T) {
 	require.NoError(t, err)
 	proof, ok := proofContainer["_proof"].([]byte)
 	require.True(t, ok)
-	require.Len(t, proof, vrf.ProofLength)
+	require.Len(t, proof, vrf.OnChainResponseLength)
 	publicPoint, err := provingKey.PublicKey.Point()
 	require.NoError(t, err)
 	require.Equal(t, proof[:64], secp256k1.LongMarshal(publicPoint))
-	goProof, err := vrf.UnmarshalSolidityProof(proof)
+	mProof := vrf.MarshaledOnChainResponse{}
+	require.Equal(t, copy(mProof[:], proof), vrf.OnChainResponseLength)
+	goProof, err := vrf.UnmarshalProofResponse(mProof)
 	require.NoError(t, err, "problem parsing solidity proof")
-	proofValid, err := goProof.VerifyVRFProof()
+	_, err = goProof.ActualProof(requestlog.BlockHash)
 	require.NoError(t, err, "problem verifying solidity proof")
-	require.True(t, proofValid, "vrf proof was invalid: %s", goProof.String())
 
 	// Check that a log from a different address is rejected. (The node will only
 	// ever see this situation if the ethereum.FilterQuery for this job breaks,
